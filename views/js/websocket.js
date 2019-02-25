@@ -7,8 +7,8 @@ var clientID = 0,
 	ballSpeed = 2000,
 	connections = 0;
 
-var clientSocket = new WebSocket("ws://localhost:8001");
-
+var HOST = location.origin.replace(/^http/, 'ws');
+var clientSocket = new WebSocket(HOST);
 
 function setEventID(event){
 	console.log("CONNECTIONS", event);
