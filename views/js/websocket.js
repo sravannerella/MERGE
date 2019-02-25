@@ -8,8 +8,7 @@ var clientID = 0,
 	connections = 0;
 
 var HOST = location.origin.replace(/^http/, 'ws');
-console.log("PROCESS PORT SERVER:", process.env.PORT);
-var clientSocket = new WebSocket(HOST);
+var clientSocket = new WebSocket(HOST+":8001");
 
 function setEventID(event){
 	console.log("CONNECTIONS", event);
