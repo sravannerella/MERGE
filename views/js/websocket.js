@@ -8,7 +8,8 @@ var clientID = 0,
 	connections = 0;
 
 var HOST = location.origin.replace(/^http/, 'ws');
-var clientSocket = new WebSocket(HOST+":8001");
+console.log('host: ', HOST);
+var clientSocket = new WebSocket(HOST);
 
 function setEventID(event){
 	console.log("CONNECTIONS", event);

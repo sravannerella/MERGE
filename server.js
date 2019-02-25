@@ -1,20 +1,24 @@
 const express = require('express'),
-	  app = express(),
-	  PORT = process.env.PORT || 8080,
-	  webSocketModule = require('ws'),
-	  socket = new webSocketModule.Server({port: 8001});
+		app = express(),
+		webSocketModule = require('ws'),
+		socServer = webSocketModule.Server,
+		PORT = process.env.PORT || 8080;
 
 let i = 0, clients = [], clientIds = [];
 
 app.use( express.static('node_modules') );
 app.use( express.static('views') );
 
-app.listen(PORT, ()=> {
+app.use((req, resp) => {
+	resp.render('index.html')
+});
+
+let server = app.listen( PORT, () => {
 	console.log("Server Listening on PORT: ", PORT);
 });
 
-app.get('/', (req, resp) => {
-	resp.render('index.html');
+const socket = new socServer({
+	server
 });
 
 function sendAllClients(msg) {
@@ -76,6 +80,7 @@ getUniqueId = () => {
 	return i;
 }
 
+
 socket.on('connection', (ws, req) => {
 	
 	ws.id = getUniqueId();
@@ -116,3 +121,4 @@ socket.on('connection', (ws, req) => {
 		console.log("TOTAL CLIENTS: ", clients.length);
 	});
 })
+
