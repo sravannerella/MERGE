@@ -8,6 +8,7 @@ var clientID = 0,
 	connections = 0;
 
 var HOST = location.origin.replace(/^http/, 'ws');
+console.log("PROCESS PORT SERVER:", process.env.PORT);
 var clientSocket = new WebSocket(HOST);
 
 function setEventID(event){
