@@ -4,7 +4,7 @@ const express = require('express'),
 		socServer = webSocketModule.Server,
 		PORT = process.env.PORT || 8080;
 
-let i = 0, clients = [], clientIds = [];
+let i = 0, clients = [], clientScreenSizes = [];
 
 app.use( express.static('node_modules') );
 app.use( express.static('views') );
@@ -37,102 +37,88 @@ function sendAllClientButSender(msg, ws){
 	});
 }
 
-function sendSender(msg, ws, hitDirection="left"){
-	msg = JSON.parse(msg);
-	// msg.type = "CLIENT_BOUNCE";
-	(msg.type === "CLIENT_BOUNCE") ? msg.type = "CLIENT_POSITION" : msg.type = "CLIENT_BOUNCE";
-	console.log("GOT SENDER MSG:", msg);
-	socket.clients.forEach( (client) => {
-		if(client === ws && client.readyState === webSocketModule.OPEN){
-			client.send( JSON.stringify(msg) );
+function sendToClientID(msg, id){
+	clients.forEach((client) => {
+		if(client.id === id && client.readyState === webSocketModule.OPEN){
+			client.send(msg);
 		}
-	});
-}
-
-function sendToClientID(msg,id){
-	msg = JSON.parse(msg);
-
-	if(msg.type === "CLIENT_POSITION"){
-		let goNext = false;
-		socket.clients.forEach((client) => {
-			if(client.id === id && client.readyState === webSocketModule.OPEN){
-				goNext = true;
-			} else if(goNext){
-				console.log(client.id);
-				client.send(JSON.stringify(msg));
-				goNext = false;
-			}
-		})
-	} else if(msg.type === "CLIENT_BOUNCE") {
-		let index = 0, i =0;
-		socket.clients.forEach((client) => {
-			i++;
-			if(client.id === id && client.readyState === webSocketModule.OPEN){
-				index = i;
-			}
-		});
-		console.log("Index: ",index);
-		clients[index - 2].send(JSON.stringify(msg));
-	}
+	})
 }
 
 getUniqueId = () => {
 	return i;
 }
 
-function calculateSizes(msg) {
-	console.log(clients.length);
-	if(clients.length > 1){
-		console.log("CALCULATE: ",msg);
-	} else {
-		return msg;
-	}
+function calculateSizes(){
+	let i=0, offset=0, screenWidth=0;
+	clients.forEach((client) => {
+		let filtered = clientScreenSizes.filter((screenSize) => {
+			return screenSize.id === client.id;
+		});
+
+		(i>0) ? offset += clientScreenSizes[i].screen.width : null;
+
+		screenWidth = clientScreenSizes.reduce((total, size) => total += size.screen.width, 0);
+		i++;
+
+		let offsetMsg = {
+			id: client.id,
+			type: "RESIZE",
+			screen: {
+				width: screenWidth,
+				height: filtered[0].screen.height
+			},
+			offset: offset
+		}
+
+		client.send(JSON.stringify(offsetMsg));
+	})
 }
 
+function recordScreenInfo(msg, id){
+	let filtered = clientScreenSizes.filter((client)=>{
+		return client.id === id;
+	})
+
+	console.log("FILTERED SCREENS: ", filtered);
+
+	if(filtered.length === 0){
+		clientScreenSizes.push({
+			id: id,
+			screen: msg.screen
+		});
+		console.log("RECORDED SCREEN SIZE", id);
+	}
+
+	console.log("CLIENT LENGTH:", clientScreenSizes.length);
+
+	(clientScreenSizes.length === clients.length) ? calculateSizes() : null;
+}
 
 socket.on('connection', (ws, req) => {
-	
+	console.log("NEW CONNECTION:");
 	ws.id = getUniqueId();
 	clients.push(ws);
-	clientIds.push(ws.id);
 	i++;
 
-	let connectionMsg = {id: i, type: "NUM_CLIENT_CONNECTIONS", clients: clients.length};
+	let connectionMsg = {
+		id: i,
+		type: "NUM_CLIENT_CONNECTIONS",
+		clients: clients.length
+	};
+
 	sendAllClients(JSON.stringify(connectionMsg));
 
-	console.log("TOTAL CLIENTS: ", clients.length);
-
 	ws.on('message', (msg) => {
+		console.log("GOT MSG");
 		let msger = JSON.parse(msg);
-		if(msger.msgType === "BALL") {
-			if(ws.id === clients[clients.length-1].id && msger.hitDirection === "right"){
-				sendSender(msg, ws, "right");
-			} else if(ws.id === clients[0].id && msger.hitDirection === "left") {
-				msger.type = "CLIENT_POSITION";
-				sendSender(msg, ws);
-			} else {
-				if(msger.type !== "CLIENT_POSITION" && msger.type !== "CLIENT_BOUNCE"){
-					sendAllClients(msg);
-				} else {
-					// sendAllClientButSender(msg, ws);
-					sendToClientID(msg, ws.id);
-				}
-			}
-		} else {
-			calculateSizes(msger);
-			sendAllClients(msg, ws.id);
-		}
+
+		let clientScreen = clientScreenSizes.filter((size) => {
+			size.id === ws.id;
+		});
+
+		(msger.type === "INFO" && clientScreen.length === 0) ? recordScreenInfo(msger, ws.id) : null;
+		// calculateSizes(msger);
 	});
 
-
-	ws.on('close', (event) => {
-		console.log("EVENT CLOSED", event);
-		clients.splice(clients.indexOf(ws), 1);
-		clientIds.splice(clientIds.indexOf(ws.id), 1);
-
-		let connectionMsg = {id: i, type: "NUM_CLIENT_CONNECTIONS", clients: clients.length};
-		sendAllClients(JSON.stringify(connectionMsg));
-		console.log("TOTAL CLIENTS: ", clients.length);
-	});
-})
-
+});

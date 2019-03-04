@@ -1,5 +1,4 @@
 function clicked(e) {
-	console.log("EVENT:", e);
 	let clientX = e.clientX - 25;
 	let clientY = e.clientY - 25;
 
@@ -17,7 +16,6 @@ function loop(speed=5000, goLeft=true){
 			if(connections > 1){
 
 				clientSocket.send(JSON.stringify({
-					msgType: "BALL",
 					type: "CLIENT_POSITION",
 					client: clientID,
 					hitDirection: "right",
@@ -46,7 +44,6 @@ function loop(speed=5000, goLeft=true){
 			if(connections > 1){
 
 				clientSocket.send(JSON.stringify({
-					msgType: "BALL",
 					type: "CLIENT_BOUNCE",
 					client: clientID,
 					hitDirection: "left",
