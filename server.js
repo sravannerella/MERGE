@@ -9,7 +9,7 @@ let i = 0, clients = [], clientIds = [];
 app.use( express.static('node_modules') );
 app.use( express.static('views') );
 
-app.use((req, resp) => {
+app.get('/', (req, resp) => {
 	resp.render('index.html')
 });
 
@@ -80,6 +80,15 @@ getUniqueId = () => {
 	return i;
 }
 
+function calculateSizes(msg) {
+	console.log(clients.length);
+	if(clients.length > 1){
+		console.log("CALCULATE: ",msg);
+	} else {
+		return msg;
+	}
+}
+
 
 socket.on('connection', (ws, req) => {
 	
@@ -95,18 +104,23 @@ socket.on('connection', (ws, req) => {
 
 	ws.on('message', (msg) => {
 		let msger = JSON.parse(msg);
-		if(ws.id === clients[clients.length-1].id && msger.hitDirection === "right"){
-			sendSender(msg, ws, "right");
-		} else if(ws.id === clients[0].id && msger.hitDirection === "left") {
-			msger.type = "CLIENT_POSITION";
-			sendSender(msg, ws);
-		} else {
-			if(msger.type !== "CLIENT_POSITION" && msger.type !== "CLIENT_BOUNCE"){
-				sendAllClients(msg);
+		if(msger.msgType === "BALL") {
+			if(ws.id === clients[clients.length-1].id && msger.hitDirection === "right"){
+				sendSender(msg, ws, "right");
+			} else if(ws.id === clients[0].id && msger.hitDirection === "left") {
+				msger.type = "CLIENT_POSITION";
+				sendSender(msg, ws);
 			} else {
-				// sendAllClientButSender(msg, ws);
-				sendToClientID(msg, ws.id);
+				if(msger.type !== "CLIENT_POSITION" && msger.type !== "CLIENT_BOUNCE"){
+					sendAllClients(msg);
+				} else {
+					// sendAllClientButSender(msg, ws);
+					sendToClientID(msg, ws.id);
+				}
 			}
+		} else {
+			calculateSizes(msger);
+			sendAllClients(msg, ws.id);
 		}
 	});
 
